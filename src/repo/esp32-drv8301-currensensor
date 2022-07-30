@@ -1,0 +1,57 @@
+#include <Arduino.h>
+#include <SimpleFOC.h>
+#include <DRV8301.h>
+BLDCMotor motor = BLDCMotor(24, 1);
+BLDCDriver3PWM driver = BLDCDriver3PWM(33, 25, 26);
+DRV8301 gate_driver = DRV8301(23, 19, 18, 5, 27, 14);
+// HallSensor sensor = HallSensor(32, 35, 34, 24);
+LowsideCurrentSense current_sense = LowsideCurrentSense(0.005, 1000, 32, 35);
+// LowsideCurrentSense current_sense  = LowsideCurrentSense(0.01, 20, A0, A1, A2);
+
+float target_velocity = 0;
+Commander command = Commander(Serial);
+void doTarget(char *cmd) { command.scalar(&target_velocity, cmd); }
+void setup()
+{
+    // initialise the current sensing
+    // delay(5000);
+    // current_sense.init();
+
+    // for SimpleFOCShield v2.01/v2.0.2
+    // current_sense.gain_b *= -1;
+
+    // Serial.begin(115200);
+    // Serial.println("Current sense ready.");
+
+    driver.voltage_power_supply = 36;
+    driver.init();
+    gate_driver.begin(PWM_INPUT_MODE_3PWM);
+    motor.linkDriver(&driver);
+    motor.voltage_limit = 12; // [V]
+    motor.velocity_limit = 3; // [rad/s]
+    motor.current_limit = 1;
+    Serial.begin(115200);
+    motor.useMonitoring(Serial);
+    motor.controller = MotionControlType::velocity_openloop;
+    motor.init();
+    command.add('T', doTarget, "target velocity");
+    Serial.println(F("Motor ready."));
+    Serial.println(F("Set the target velocity using serial terminal:"));
+    _delay(1000);
+}
+void loop()
+{
+    motor.move(target_velocity);
+    command.run();
+    // PhaseCurrent_s currents = current_sense.getPhaseCurrents();
+    // float current_magnitude = current_sense.getDCCurrent();
+
+    Serial.print(analogRead(32)); // milli Amps
+    Serial.print("\t");
+    Serial.println(analogRead(35)); // milli Amps
+    // delay(100);
+    // Serial.print("\t");
+    // // Serial.print(currents.c*1000); // milli Amps
+    // // Serial.print("\t");
+    // Serial.println(current_magnitude*1000); // milli Amps
+}

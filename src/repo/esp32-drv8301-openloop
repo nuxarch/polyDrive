@@ -1,0 +1,32 @@
+#include <Arduino.h>
+#include <SimpleFOC.h>
+#include <DRV8301.h>
+BLDCMotor motor = BLDCMotor(24,1.5);
+BLDCDriver3PWM driver = BLDCDriver3PWM(33, 25, 26);
+DRV8301 gate_driver = DRV8301(23, 19, 18, 5, 27, 14);
+float target_velocity = 0;
+Commander command = Commander(Serial);
+void doTarget(char *cmd) { command.scalar(&target_velocity, cmd); }
+void setup()
+{
+    driver.voltage_power_supply = 36;
+    driver.init();
+    gate_driver.begin(PWM_INPUT_MODE_3PWM);
+    motor.linkDriver(&driver);
+    motor.voltage_limit = 12;   // [V]
+    motor.velocity_limit = 3; // [rad/s]
+    motor.current_limit = 3;
+    Serial.begin(115200);
+    motor.useMonitoring(Serial);
+    motor.controller = MotionControlType::angle_openloop;
+    motor.init();
+    command.add('T', doTarget, "target velocity");
+    Serial.println(F("Motor ready."));
+    Serial.println(F("Set the target velocity using serial terminal:"));
+    _delay(1000);
+}
+void loop()
+{
+    motor.move(target_velocity);
+    command.run();
+}
