@@ -25,11 +25,11 @@
 #define OC_ADJ 21
 
 // Motor instance
-BLDCMotor motor = BLDCMotor(23,5);
+BLDCMotor motor = BLDCMotor(24,1);
 BLDCDriver3PWM driver = BLDCDriver3PWM(INH_A, INH_B, INH_C, EN_GATE);
 
 // SENSOR
-HallSensor sensor = HallSensor(15, 22, 23, 23);
+HallSensor sensor = HallSensor(32, 35, 34, 24);
 void doA() { sensor.handleA(); }
 void doB() { sensor.handleB(); }
 void doC() { sensor.handleC(); }
@@ -42,7 +42,7 @@ void setup()
 {
   Serial.begin(115200);
   // initialize encoder sensor hardware
-  sensor.pullup = Pullup::USE_EXTERN;
+  sensor.pullup = Pullup::USE_INTERN;
   sensor.init();
   sensor.enableInterrupts(doA, doB, doC);
   Serial.println("Sensor ready");
@@ -65,34 +65,34 @@ void setup()
 
   // driver config
   // power supply voltage [V]
-  driver.voltage_power_supply = 32;
+  driver.voltage_power_supply = 35;
   driver.init();
   // link the motor and the driver
   motor.linkDriver(&driver);
-  motor.voltage_sensor_align = 8;
-  motor.velocity_index_search = 8;
+  motor.voltage_sensor_align = 6;
+  motor.velocity_index_search = 6;
   // motor.phase_resistance = 0.0;
 
   // choose FOC modulation
   motor.foc_modulation = FOCModulationType::SinePWM;
 
   // set control loop type to be used
-  // motor.controller = MotionControlType::torque;
   motor.controller = MotionControlType::torque;
+  // motor.controller = MotionControlType::velocity_openloop;
 
   // contoller configuration based on the controll type
   motor.PID_velocity.P = 0.2f;
-  motor.PID_velocity.I = 20;
+  motor.PID_velocity.I = 10;
   // default voltage_power_supply
-  motor.voltage_limit = 12;
+  motor.voltage_limit = 35;
 
   // velocity low pass filtering time constant
   motor.LPF_velocity.Tf = 0.01f;
 
   // angle loop controller
-  motor.P_angle.P = 20;
+  // motor.P_angle.P = 20;
   // angle loop velocity limit
-  motor.velocity_limit = 50;
+  // motor.velocity_limit = 50;
 
   // use monitoring with serial for motor init
   // monitoring port
@@ -106,7 +106,7 @@ void setup()
   motor.initFOC();
 
   // set the inital target value
-  motor.target = 2;
+  // motor.target = 2;
 
   // define the motor id
   command.add('T', onMotor, "motor");
