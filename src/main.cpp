@@ -1,87 +1,131 @@
-#include <Arduino.h>
+/**
+ * Comprehensive BLDC motor control example using encoder and the DRV8302 board
+ *
+ * Using serial terminal user can send motor commands and configure the motor and FOC in real-time:
+ * - configure PID controller constants
+ * - change motion control loops
+ * - monitor motor variabels
+ * - set target values
+ * - check all the configuration values
+ *
+ * check the https://docs.simplefoc.com for full list of motor commands
+ *
+ */
 #include <SimpleFOC.h>
-#include <DRV8301.h>
-BLDCMotor motor = BLDCMotor(7, 0.5);
-BLDCDriver3PWM driver = BLDCDriver3PWM(33, 25, 26);
-DRV8301 gate_driver = DRV8301(23, 19, 18, 5, 27, 14);
-float target_velocity = 0;
-HallSensor sensor = HallSensor(34, 35, 32, 7);
+
+// DRV8302 pins connections
+// don't forget to connect the common ground pin
+#define INH_A 25
+#define INH_B 26
+#define INH_C 27
+
+#define EN_GATE 14
+#define M_PWM 19
+#define M_OC 18
+#define OC_ADJ 21
+
+// Motor instance
+BLDCMotor motor = BLDCMotor(23);
+BLDCDriver3PWM driver = BLDCDriver3PWM(INH_A, INH_B, INH_C, EN_GATE);
+
+// SENSOR
+// HallSensor sensor = HallSensor(2, 4, 15, 24);
+HallSensor sensor = HallSensor(15, 22, 23, 23);
 void doA() { sensor.handleA(); }
 void doB() { sensor.handleB(); }
 void doC() { sensor.handleC(); }
 
+// commander interface
 Commander command = Commander(Serial);
-void doTarget(char *cmd) { command.scalar(&target_velocity, cmd); }
+void onMotor(char *cmd) { command.motor(&motor, cmd); }
+
 void setup()
 {
-
-  // initialize sensor sensor hardware
+  Serial.begin(115200);
+  // initialize encoder sensor hardware
+  sensor.pullup = Pullup::USE_EXTERN;
   sensor.init();
   sensor.enableInterrupts(doA, doB, doC);
-  // software interrupts
-  // PciManager.registerListener(&listenerIndex);
+  Serial.println("Sensor ready");
+  _delay(1000);
+
   // link the motor to the sensor
   motor.linkSensor(&sensor);
 
+  // DRV8302 specific code
+  // M_OC  - enable overcurrent protection
+  pinMode(M_OC, OUTPUT);
+  digitalWrite(M_OC, LOW);
+  // M_PWM  - enable 3pwm mode
+  pinMode(M_PWM, OUTPUT);
+  digitalWrite(M_PWM, HIGH);
+  // OD_ADJ - set the maximum overcurrent limit possible
+  // Better option would be to use voltage divisor to set exact value
+  pinMode(OC_ADJ, OUTPUT);
+  digitalWrite(OC_ADJ, HIGH);
+
   // driver config
   // power supply voltage [V]
-  driver.voltage_power_supply = 36;
+  driver.voltage_power_supply = 32;
   driver.init();
-  motor.linkDriver(&driver);
-  gate_driver.begin(PWM_INPUT_MODE_3PWM);
   // link the motor and the driver
   motor.linkDriver(&driver);
 
-  // aligning voltage [V]
-  // aligning voltage [V]
-  motor.voltage_sensor_align = 2;
-  // index search velocity [rad/s]
-  motor.velocity_index_search = 3;
-  // limiting motor movements
-  motor.voltage_limit = 1;    // [V]
-  motor.velocity_limit = 20; // [rad/s]
-  motor.current_limit = 2;
+  // choose FOC modulation
+  motor.foc_modulation = FOCModulationType::SinePWM;
 
-  // set motion control loop to be used
+  // set control loop type to be used
   motor.controller = MotionControlType::torque;
 
-  // contoller configuration
-  // default parameters in defaults.h
-  // velocity PI controller parameters
-  motor.PID_velocity.P = 5;
-  motor.PID_velocity.I = 1;
-  motor.PID_velocity.D = 0.0;
-
-  motor.P_angle.D = 0.3;
+  // contoller configuration based on the controll type
+  motor.PID_velocity.P = 0.2f;
+  motor.PID_velocity.I = 20;
   // default voltage_power_supply
-  motor.voltage_limit = 7;
-  // jerk control using voltage voltage ramp
-  // default value is 300 volts per sec  ~ 0.3V per millisecond
-  motor.PID_velocity.output_ramp = 1000;
+  motor.voltage_limit = 12;
 
   // velocity low pass filtering time constant
-  motor.LPF_velocity.Tf = 0.01;
+  motor.LPF_velocity.Tf = 0.01f;
 
-  // use monitoring with serial
+  // angle loop controller
+  motor.P_angle.P = 20;
+  // angle loop velocity limit
+  motor.velocity_limit = 50;
+
+  // use monitoring with serial for motor init
+  // monitoring port
   Serial.begin(115200);
   // comment out if not needed
   motor.useMonitoring(Serial);
 
-  // initialize motor
+  // initialise motor
   motor.init();
-  // align sensor and start FOC
+  // align encoder and start FOC
   motor.initFOC();
 
-  // add target command T
-  command.add('T', doTarget, "target voltage");
-  Serial.println(F("Motor ready."));
-  Serial.println(F("Set the target velocity using serial terminal:"));
+  // set the inital target value
+  motor.target = 2;
+
+  // define the motor id
+  command.add('T', onMotor, "motor");
+
+  Serial.println(F("Full control example: "));
+  Serial.println(F("Run user commands to configure and the motor (find the full command list in docs.simplefoc.com) \n "));
+  Serial.println(F("Initial motion control loop is voltage loop."));
+  Serial.println(F("Initial target voltage 2V."));
+
   _delay(1000);
 }
+
 void loop()
 {
+  // iterative setting FOC phase voltage
   motor.loopFOC();
-  motor.move(target_velocity);
-  motor.monitor();
+
+  // iterative function setting the outter loop target
+  // velocity, position or voltage
+  // if tatget not set in parameter uses motor.target variable
+  motor.move();
+
+  // user communication
   command.run();
 }
