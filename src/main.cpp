@@ -12,7 +12,7 @@
  *
  */
 #include <SimpleFOC.h>
-
+#define THROTTLE_PIN    33
 // DRV8302 pins connections
 // don't forget to connect the common ground pin
 #define INH_A 25
@@ -77,8 +77,8 @@ void setup()
   motor.foc_modulation = FOCModulationType::SinePWM;
 
   // set control loop type to be used
-  // motor.controller = MotionControlType::torque;
-  motor.controller = MotionControlType::velocity;
+  motor.controller = MotionControlType::torque;
+  // motor.controller = MotionControlType::velocity;
 
   // contoller configuration based on the controll type
   motor.PID_velocity.P = 0.2f;
@@ -118,9 +118,14 @@ void setup()
 
   _delay(1000);
 }
-
+int throttle_value = 0;
 void loop()
 {
+
+  throttle_value = analogRead(THROTTLE_PIN);
+  
+  // throttle_value = map(throttle_value, 0, 4095, );
+  Serial.println("raw:"+String(throttle_value));
   // iterative setting FOC phase voltage
   motor.loopFOC();
 
