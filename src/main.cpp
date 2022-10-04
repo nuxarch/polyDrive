@@ -29,7 +29,7 @@ BLDCMotor motor = BLDCMotor(23,5);
 BLDCDriver3PWM driver = BLDCDriver3PWM(INH_A, INH_B, INH_C, EN_GATE);
 
 // SENSOR
-HallSensor sensor = HallSensor(15, 22, 23, 23);
+HallSensor sensor = HallSensor(32, 35, 34, 24);
 void doA() { sensor.handleA(); }
 void doB() { sensor.handleB(); }
 void doC() { sensor.handleC(); }
