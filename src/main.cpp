@@ -25,11 +25,10 @@
 #define OC_ADJ 21
 
 // Motor instance
-BLDCMotor motor = BLDCMotor(23);
+BLDCMotor motor = BLDCMotor(23,5);
 BLDCDriver3PWM driver = BLDCDriver3PWM(INH_A, INH_B, INH_C, EN_GATE);
 
 // SENSOR
-// HallSensor sensor = HallSensor(2, 4, 15, 24);
 HallSensor sensor = HallSensor(15, 22, 23, 23);
 void doA() { sensor.handleA(); }
 void doB() { sensor.handleB(); }
@@ -70,11 +69,15 @@ void setup()
   driver.init();
   // link the motor and the driver
   motor.linkDriver(&driver);
+  motor.voltage_sensor_align = 8;
+  motor.velocity_index_search = 8;
+  // motor.phase_resistance = 0.0;
 
   // choose FOC modulation
   motor.foc_modulation = FOCModulationType::SinePWM;
 
   // set control loop type to be used
+  // motor.controller = MotionControlType::torque;
   motor.controller = MotionControlType::torque;
 
   // contoller configuration based on the controll type
@@ -93,7 +96,7 @@ void setup()
 
   // use monitoring with serial for motor init
   // monitoring port
-  Serial.begin(115200);
+  // Serial.begin(115200);
   // comment out if not needed
   motor.useMonitoring(Serial);
 
