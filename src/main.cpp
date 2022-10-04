@@ -124,7 +124,8 @@ void loop()
 
   throttle_value = analogRead(THROTTLE_PIN);
   
-  // throttle_value = map(throttle_value, 0, 4095, );
+  throttle_value = map(throttle_value, 1000, 4095, 0,10);
+  // motor.target = throttle_value;
   Serial.println("raw:"+String(throttle_value));
   // iterative setting FOC phase voltage
   motor.loopFOC();
