@@ -49,22 +49,50 @@ void setup()
 
   // driver config
   // power supply voltage [V]
-  driver.voltage_power_supply = 30;
+  driver.voltage_power_supply = 35;
   driver.init();
   // link the motor and the driver
   motor.linkDriver(&driver);
+  motor.voltage_sensor_align = 12;
+  motor.velocity_index_search = 10;
+  // motor.phase_resistance = 0.0;
+
+  // choose FOC modulation
+  motor.foc_modulation = FOCModulationType::SinePWM;
 
   // set control loop type to be used
   motor.controller = MotionControlType::torque;
   // motor.controller = MotionControlType::velocity;
 
+  // contoller configuration based on the controll type
+  motor.PID_velocity.P = 0.2f;
+  motor.PID_velocity.I = 10;
   // default voltage_power_supply
-  motor.voltage_limit = 30;
+  motor.voltage_limit = 35;
 
+  // velocity low pass filtering time constant
+  motor.LPF_velocity.Tf = 0.01f;
+
+  // angle loop controller
+  // motor.P_angle.P = 20;
+  // angle loop velocity limit
+  // motor.velocity_limit = 50;
+
+  // use monitoring with serial for motor init
+  // monitoring port
+  // Serial.begin(115200);
+  // comment out if not needed
   motor.useMonitoring(Serial);
 
   // initialise motor
   motor.init();
+  // align encoder and start FOC
+  // motor.initFOC();
+
+  // set the inital target value
+  // motor.target = 2;
+
+  // define the motor id
   command.add('T', onMotor, "motor");
 
   Serial.println(F("Full control example: "));
