@@ -49,13 +49,13 @@ void taskBlink(void *parameter)
     // if(counter > 8){
     //   counter = 0;
     // }
-    for (int i = 0; i < 30; i++)
+    for (int i = 0; i < 50; i++)
     {
       Serial.println(counter++);
       motor.target = counter;
       vTaskDelay(300 / portTICK_PERIOD_MS);
     }
-    for (int i = 30; i > 0; i--)
+    for (int i = 50; i > 0; i--)
     {
       Serial.println(counter--);
       motor.target = counter;
@@ -130,7 +130,9 @@ void setup()
   // initialise motor
   motor.init();
   // align encoder and start FOC
-  motor.initFOC();
+  // motor.initFOC();
+  motor.initFOC(5.24, Direction::CW);
+
 
   // set the inital target value
   // motor.target = 2;
