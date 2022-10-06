@@ -1,20 +1,6 @@
-/**
- * Comprehensive BLDC motor control example using encoder and the DRV8302 board
- *
- * Using serial terminal user can send motor commands and configure the motor and FOC in real-time:
- * - configure PID controller constants
- * - change motion control loops
- * - monitor motor variabels
- * - set target values
- * - check all the configuration values
- *
- * check the https://docs.simplefoc.com for full list of motor commands
- *
- */
+
 #include <SimpleFOC.h>
 #define THROTTLE_PIN 33
-// DRV8302 pins connections
-// don't forget to connect the common ground pin
 #define INH_A 25
 #define INH_B 26
 #define INH_C 27
@@ -25,7 +11,7 @@
 #define OC_ADJ 21
 
 // Motor instance
-BLDCMotor motor = BLDCMotor(23, 0.5);
+BLDCMotor motor = BLDCMotor(23, 2.5);
 BLDCDriver3PWM driver = BLDCDriver3PWM(INH_A, INH_B, INH_C, EN_GATE);
 
 // SENSOR
@@ -41,21 +27,28 @@ void onMotor(char *cmd) { command.motor(&motor, cmd); }
 
 xTaskHandle taskBlinkHandle;
 int counter = 0;
+
+void angle_test(){
+  Serial.println("set angle 3.26");
+  motor.target = 3.26;
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  motor.target = 0;
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+}
+
 void taskBlink(void *parameter)
 {
   for (;;)
   {
-    // /*place your rtos code here*/
-    // if(counter > 8){
-    //   counter = 0;
-    // }
-    for (int i = 0; i < 50; i++)
+    // angle_test();
+    // Serial.println();
+    for (int i = 0; i < 10; i++)
     {
       Serial.println(counter++);
       motor.target = counter;
       vTaskDelay(300 / portTICK_PERIOD_MS);
     }
-    for (int i = 50; i > 0; i--)
+    for (int i = 10; i > 0; i--)
     {
       Serial.println(counter--);
       motor.target = counter;
@@ -105,6 +98,8 @@ void setup()
   // set control loop type to be used
   motor.controller = MotionControlType::torque;
   // motor.controller = MotionControlType::velocity;
+  // motor.controller = MotionControlType::angle;
+
 
   // contoller configuration based on the controll type
   motor.PID_velocity.P = 0.2f;
@@ -117,9 +112,9 @@ void setup()
   motor.LPF_velocity.Tf = 0.01f;
 
   // angle loop controller
-  // motor.P_angle.P = 20;
+  motor.P_angle.P = 20;
   // angle loop velocity limit
-  // motor.velocity_limit = 50;
+  motor.velocity_limit = 50;
 
   // use monitoring with serial for motor init
   // monitoring port
