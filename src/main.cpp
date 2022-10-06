@@ -1,20 +1,6 @@
-/**
- * Comprehensive BLDC motor control example using encoder and the DRV8302 board
- *
- * Using serial terminal user can send motor commands and configure the motor and FOC in real-time:
- * - configure PID controller constants
- * - change motion control loops
- * - monitor motor variabels
- * - set target values
- * - check all the configuration values
- *
- * check the https://docs.simplefoc.com for full list of motor commands
- *
- */
+
 #include <SimpleFOC.h>
-#define THROTTLE_PIN    33
-// DRV8302 pins connections
-// don't forget to connect the common ground pin
+#define THROTTLE_PIN 33
 #define INH_A 25
 #define INH_B 26
 #define INH_C 27
@@ -25,33 +11,53 @@
 #define OC_ADJ 21
 
 // Motor instance
-BLDCMotor motor = BLDCMotor(23);
+BLDCMotor motor = BLDCMotor(1,1);
 BLDCDriver3PWM driver = BLDCDriver3PWM(INH_A, INH_B, INH_C, EN_GATE);
 
 // SENSOR
 // HallSensor sensor = HallSensor(32, 35, 34, 13);
-HallSensor sensor = HallSensor(32, 35, 34, 23);
+HallSensor sensor = HallSensor(32, 35, 34, 1);
 void doA() { sensor.handleA(); }
 void doB() { sensor.handleB(); }
 void doC() { sensor.handleC(); }
-
-// commander interface
+float target_voltage = 2;
 Commander command = Commander(Serial);
 void onMotor(char *cmd) { command.motor(&motor, cmd); }
+void serialReceiveUserCommand()
+{
+
+  // a string to hold incoming data
+  static String received_chars;
+
+  while (Serial.available())
+  {
+    // get the new byte:
+    char inChar = (char)Serial.read();
+    // add it to the string buffer:
+    received_chars += inChar;
+    // end of user input
+    if (inChar == '\n')
+    {
+
+      // change the motor target
+      target_voltage = received_chars.toFloat();
+      Serial.print("Target voltage: ");
+      Serial.println(target_voltage);
+
+      // reset the command buffer
+      received_chars = "";
+    }
+  }
+}
 
 void setup()
 {
-  Serial.begin(115200);
-  // initialize encoder sensor hardware
   sensor.pullup = Pullup::USE_INTERN;
   sensor.init();
   sensor.enableInterrupts(doA, doB, doC);
   Serial.println("Sensor ready");
-  _delay(1000);
-
-  // link the motor to the sensor
+  delay(1000);;
   motor.linkSensor(&sensor);
-
   // DRV8302 specific code
   // M_OC  - enable overcurrent protection
   pinMode(M_OC, OUTPUT);
@@ -63,80 +69,100 @@ void setup()
   // Better option would be to use voltage divisor to set exact value
   pinMode(OC_ADJ, OUTPUT);
   digitalWrite(OC_ADJ, HIGH);
-
-  // driver config
-  // power supply voltage [V]
-  driver.voltage_power_supply = 35;
+  driver.voltage_power_supply = 40;
   driver.init();
-  // link the motor and the driver
   motor.linkDriver(&driver);
-  motor.voltage_sensor_align = 5;
-  motor.velocity_index_search = 4;
-  // motor.phase_resistance = 0.0;
-
-  // choose FOC modulation
-  motor.foc_modulation = FOCModulationType::SinePWM;
-
-  // set control loop type to be used
-  // motor.controller = MotionControlType::torque;
-  // motor.controller = MotionControlType::velocity;
-  motor.controller = MotionControlType::velocity_openloop;
-
-  // contoller configuration based on the controll type
-  motor.PID_velocity.P = 0.2f;
-  motor.PID_velocity.I = 10;
-  // default voltage_power_supply
-  motor.voltage_limit = 35;
-
-  // velocity low pass filtering time constant
-  motor.LPF_velocity.Tf = 0.01f;
-
-  // angle loop controller
-  // motor.P_angle.P = 20;
-  // angle loop velocity limit
-  // motor.velocity_limit = 50;
-
-  // use monitoring with serial for motor init
-  // monitoring port
-  // Serial.begin(115200);
-  // comment out if not needed
-  motor.useMonitoring(Serial);
-
-  // initialise motor
   motor.init();
-  // align encoder and start FOC
-  motor.initFOC();
-
-  // set the inital target value
-  // motor.target = 2;
-
-  // define the motor id
-  command.add('T', onMotor, "motor");
-
-  Serial.println(F("Full control example: "));
-  Serial.println(F("Run user commands to configure and the motor (find the full command list in docs.simplefoc.com) \n "));
-  Serial.println(F("Initial motion control loop is voltage loop."));
-  Serial.println(F("Initial target voltage 2V."));
-
+  Serial.begin(115200);
+  Serial.println("Pole pairs (PP) estimator");
+  Serial.println("-\n");
+  float pp_search_voltage = 8;     // maximum power_supply_voltage/2
+  float pp_search_angle = 6 * _PI; // search electrical angle to turn
+  motor.controller = MotionControlType::angle_openloop;
+  motor.voltage_limit = pp_search_voltage;
+  motor.move(0);
   _delay(1000);
+  // read the sensor angle
+  sensor.update();
+  float angle_begin = sensor.getAngle();
+  _delay(50);
+
+  // move the motor slowly to the electrical angle pp_search_angle
+  float motor_angle = 0;
+  while (motor_angle <= pp_search_angle)
+  {
+    motor_angle += 0.01f;
+    sensor.update(); // keep track of the overflow
+    motor.move(motor_angle);
+    _delay(1);
+  }
+  _delay(1000);
+  // read the sensor value for 180
+  sensor.update();
+  float angle_end = sensor.getAngle();
+  _delay(50);
+  // turn off the motor
+  motor.move(0);
+  _delay(1000);
+
+  // calculate the pole pair number
+  int pp = round((pp_search_angle) / (angle_end - angle_begin));
+
+  Serial.print(F("Estimated PP : "));
+  Serial.println(pp);
+  Serial.println(F("PP = Electrical angle / Encoder angle "));
+  Serial.print(pp_search_angle * 180 / _PI);
+  Serial.print(F("/"));
+  Serial.print((angle_end - angle_begin) * 180 / _PI);
+  Serial.print(F(" = "));
+  Serial.println((pp_search_angle) / (angle_end - angle_begin));
+  Serial.println();
+
+  // a bit of monitoring the result
+  if (pp <= 0)
+  {
+    Serial.println(F("PP number cannot be negative"));
+    Serial.println(F(" - Try changing the search_voltage value or motor/sensor configuration."));
+    return;
+  }
+  else if (pp > 30)
+  {
+    Serial.println(F("PP number very high, possible error."));
+  }
+  else
+  {
+    Serial.println(F("If PP is estimated well your motor should turn now!"));
+    Serial.println(F(" - If it is not moving try to relaunch the program!"));
+    Serial.println(F(" - You can also try to adjust the target voltage using serial terminal!"));
+  }
+
+  // set motion control loop to be used
+  motor.controller = MotionControlType::torque;
+  // set the pole pair number to the motor
+  motor.pole_pairs = pp;
+  // align sensor and start FOC
+  motor.initFOC();
+  _delay(1000);
+
+  Serial.println(F("\n Motor ready."));
+  Serial.println(F("Set the target voltage using serial terminal:"));
 }
-int throttle_value = 0;
+
 void loop()
 {
 
-  throttle_value = analogRead(THROTTLE_PIN);
-  
-  throttle_value = map(throttle_value, 1000, 4095, 0,10);
-  // motor.target = throttle_value;
-  Serial.println("raw:"+String(throttle_value));
-  // iterative setting FOC phase voltage
+  // main FOC algorithm function
+  // the faster you run this function the better
+  // Arduino UNO loop  ~1kHz
+  // Bluepill loop ~10kHz
   motor.loopFOC();
 
-  // iterative function setting the outter loop target
-  // velocity, position or voltage
-  // if tatget not set in parameter uses motor.target variable
-  motor.move();
+  // Motion control function
+  // velocity, position or voltage (defined in motor.controller)
+  // this function can be run at much lower frequency than loopFOC() function
+  // You can also use motor.move() and set the motor.target in the code
+  motor.move(target_voltage);
 
-  // user communication
-  command.run();
+  // communicate with the user
+  serialReceiveUserCommand();
 }
