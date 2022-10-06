@@ -24,16 +24,9 @@
 #define M_OC 18
 #define OC_ADJ 21
 
-// Motor instance
 BLDCMotor motor = BLDCMotor(23,1);
 BLDCDriver3PWM driver = BLDCDriver3PWM(INH_A, INH_B, INH_C, EN_GATE);
 
-// SENSOR
-// HallSensor sensor = HallSensor(32, 35, 34, 13);
-HallSensor sensor = HallSensor(32, 35, 34, 23);
-void doA() { sensor.handleA(); }
-void doB() { sensor.handleB(); }
-void doC() { sensor.handleC(); }
 
 // commander interface
 Commander command = Commander(Serial);
@@ -42,16 +35,6 @@ void onMotor(char *cmd) { command.motor(&motor, cmd); }
 void setup()
 {
   Serial.begin(115200);
-  // initialize encoder sensor hardware
-  sensor.pullup = Pullup::USE_INTERN;
-  sensor.init();
-  sensor.enableInterrupts(doA, doB, doC);
-  Serial.println("Sensor ready");
-  _delay(1000);
-
-  // link the motor to the sensor
-  motor.linkSensor(&sensor);
-
   // DRV8302 specific code
   // M_OC  - enable overcurrent protection
   pinMode(M_OC, OUTPUT);
@@ -66,50 +49,22 @@ void setup()
 
   // driver config
   // power supply voltage [V]
-  driver.voltage_power_supply = 35;
+  driver.voltage_power_supply = 30;
   driver.init();
   // link the motor and the driver
   motor.linkDriver(&driver);
-  motor.voltage_sensor_align = 12;
-  motor.velocity_index_search = 10;
-  // motor.phase_resistance = 0.0;
-
-  // choose FOC modulation
-  motor.foc_modulation = FOCModulationType::SinePWM;
 
   // set control loop type to be used
   motor.controller = MotionControlType::torque;
   // motor.controller = MotionControlType::velocity;
 
-  // contoller configuration based on the controll type
-  motor.PID_velocity.P = 0.2f;
-  motor.PID_velocity.I = 10;
   // default voltage_power_supply
-  motor.voltage_limit = 35;
+  motor.voltage_limit = 30;
 
-  // velocity low pass filtering time constant
-  motor.LPF_velocity.Tf = 0.01f;
-
-  // angle loop controller
-  // motor.P_angle.P = 20;
-  // angle loop velocity limit
-  // motor.velocity_limit = 50;
-
-  // use monitoring with serial for motor init
-  // monitoring port
-  // Serial.begin(115200);
-  // comment out if not needed
   motor.useMonitoring(Serial);
 
   // initialise motor
   motor.init();
-  // align encoder and start FOC
-  motor.initFOC();
-
-  // set the inital target value
-  // motor.target = 2;
-
-  // define the motor id
   command.add('T', onMotor, "motor");
 
   Serial.println(F("Full control example: "));
@@ -123,13 +78,13 @@ int throttle_value = 0;
 void loop()
 {
 
-  throttle_value = analogRead(THROTTLE_PIN);
+  // throttle_value = analogRead(THROTTLE_PIN);
   
-  throttle_value = map(throttle_value, 1000, 4095, 0,10);
-  // motor.target = throttle_value;
-  Serial.println("raw:"+String(throttle_value));
-  // iterative setting FOC phase voltage
-  motor.loopFOC();
+  // throttle_value = map(throttle_value, 1000, 4095, 0,10);
+  // // motor.target = throttle_value;
+  // Serial.println("raw:"+String(throttle_value));
+  // // iterative setting FOC phase voltage
+  // motor.loopFOC();
 
   // iterative function setting the outter loop target
   // velocity, position or voltage
