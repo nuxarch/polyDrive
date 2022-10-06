@@ -11,11 +11,11 @@
 #define OC_ADJ 21
 
 // Motor instance
-BLDCMotor motor = BLDCMotor(1,1);
+BLDCMotor motor = BLDCMotor(1,1.5);
 BLDCDriver3PWM driver = BLDCDriver3PWM(INH_A, INH_B, INH_C, EN_GATE);
 
 // SENSOR
-// HallSensor sensor = HallSensor(32, 35, 34, 13);
+// HallSensor sensor = HallSensor(32, 35, 34, 1);
 HallSensor sensor = HallSensor(32, 35, 34, 1);
 void doA() { sensor.handleA(); }
 void doB() { sensor.handleB(); }
@@ -69,15 +69,15 @@ void setup()
   // Better option would be to use voltage divisor to set exact value
   pinMode(OC_ADJ, OUTPUT);
   digitalWrite(OC_ADJ, HIGH);
-  driver.voltage_power_supply = 40;
+  driver.voltage_power_supply = 30;
   driver.init();
   motor.linkDriver(&driver);
   motor.init();
   Serial.begin(115200);
   Serial.println("Pole pairs (PP) estimator");
   Serial.println("-\n");
-  float pp_search_voltage = 8;     // maximum power_supply_voltage/2
-  float pp_search_angle = 6 * _PI; // search electrical angle to turn
+  float pp_search_voltage = 15;     // maximum power_supply_voltage/2
+  float pp_search_angle = 2 * _PI; // search electrical angle to turn
   motor.controller = MotionControlType::angle_openloop;
   motor.voltage_limit = pp_search_voltage;
   motor.move(0);
