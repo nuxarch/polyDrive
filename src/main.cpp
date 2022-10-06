@@ -12,7 +12,7 @@
  *
  */
 #include <SimpleFOC.h>
-#define THROTTLE_PIN    33
+#define THROTTLE_PIN 33
 // DRV8302 pins connections
 // don't forget to connect the common ground pin
 #define INH_A 25
@@ -25,7 +25,7 @@
 #define OC_ADJ 21
 
 // Motor instance
-BLDCMotor motor = BLDCMotor(23,1);
+BLDCMotor motor = BLDCMotor(23, 0.5);
 BLDCDriver3PWM driver = BLDCDriver3PWM(INH_A, INH_B, INH_C, EN_GATE);
 
 // SENSOR
@@ -38,6 +38,31 @@ void doC() { sensor.handleC(); }
 // commander interface
 Commander command = Commander(Serial);
 void onMotor(char *cmd) { command.motor(&motor, cmd); }
+
+xTaskHandle taskBlinkHandle;
+int counter = 0;
+void taskBlink(void *parameter)
+{
+  for (;;)
+  {
+    // /*place your rtos code here*/
+    // if(counter > 8){
+    //   counter = 0;
+    // }
+    for (int i = 0; i < 30; i++)
+    {
+      Serial.println(counter++);
+      motor.target = counter;
+      vTaskDelay(300 / portTICK_PERIOD_MS);
+    }
+    for (int i = 30; i > 0; i--)
+    {
+      Serial.println(counter--);
+      motor.target = counter;
+      vTaskDelay(300 / portTICK_PERIOD_MS);
+    }
+  }
+}
 
 void setup()
 {
@@ -70,7 +95,7 @@ void setup()
   driver.init();
   // link the motor and the driver
   motor.linkDriver(&driver);
-  motor.voltage_sensor_align = 12;
+  motor.voltage_sensor_align = 15;
   motor.velocity_index_search = 10;
   // motor.phase_resistance = 0.0;
 
@@ -85,6 +110,7 @@ void setup()
   motor.PID_velocity.P = 0.2f;
   motor.PID_velocity.I = 10;
   // default voltage_power_supply
+
   motor.voltage_limit = 35;
 
   // velocity low pass filtering time constant
@@ -118,16 +144,18 @@ void setup()
   Serial.println(F("Initial target voltage 2V."));
 
   _delay(1000);
+  Serial.println("RTOS app begin");
+  xTaskCreate(taskBlink, "task blink", 4000, NULL, 1, NULL);
 }
 int throttle_value = 0;
 void loop()
 {
 
-  throttle_value = analogRead(THROTTLE_PIN);
-  
-  throttle_value = map(throttle_value, 1000, 4095, 0,10);
-  // motor.target = throttle_value;
-  Serial.println("raw:"+String(throttle_value));
+  // throttle_value = analogRead(THROTTLE_PIN);
+
+  // throttle_value = map(throttle_value, 1000, 4095, 0,10);
+
+  // Serial.println("raw:"+String(throttle_value));
   // iterative setting FOC phase voltage
   motor.loopFOC();
 
