@@ -25,7 +25,7 @@
 #define OC_ADJ 21
 
 // Motor instance
-BLDCMotor motor = BLDCMotor(23,1);
+BLDCMotor motor = BLDCMotor(23);
 BLDCDriver3PWM driver = BLDCDriver3PWM(INH_A, INH_B, INH_C, EN_GATE);
 
 // SENSOR
@@ -70,16 +70,17 @@ void setup()
   driver.init();
   // link the motor and the driver
   motor.linkDriver(&driver);
-  motor.voltage_sensor_align = 12;
-  motor.velocity_index_search = 10;
+  motor.voltage_sensor_align = 5;
+  motor.velocity_index_search = 4;
   // motor.phase_resistance = 0.0;
 
   // choose FOC modulation
   motor.foc_modulation = FOCModulationType::SinePWM;
 
   // set control loop type to be used
-  motor.controller = MotionControlType::torque;
+  // motor.controller = MotionControlType::torque;
   // motor.controller = MotionControlType::velocity;
+  motor.controller = MotionControlType::velocity_openloop;
 
   // contoller configuration based on the controll type
   motor.PID_velocity.P = 0.2f;
