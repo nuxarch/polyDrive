@@ -35,6 +35,7 @@ void onMotor(char *cmd) { command.motor(&motor, cmd); }
 void setup()
 {
   Serial.begin(115200);
+
   // DRV8302 specific code
   // M_OC  - enable overcurrent protection
   pinMode(M_OC, OUTPUT);
@@ -53,7 +54,7 @@ void setup()
   driver.init();
   // link the motor and the driver
   motor.linkDriver(&driver);
-  motor.voltage_sensor_align = 12;
+  motor.voltage_sensor_align = 15;
   motor.velocity_index_search = 10;
   // motor.phase_resistance = 0.0;
 
@@ -61,13 +62,14 @@ void setup()
   motor.foc_modulation = FOCModulationType::SinePWM;
 
   // set control loop type to be used
-  motor.controller = MotionControlType::torque;
+  motor.controller = MotionControlType::velocity_openloop;
   // motor.controller = MotionControlType::velocity;
 
   // contoller configuration based on the controll type
   motor.PID_velocity.P = 0.2f;
   motor.PID_velocity.I = 10;
   // default voltage_power_supply
+
   motor.voltage_limit = 35;
 
   // velocity low pass filtering time constant
@@ -87,7 +89,7 @@ void setup()
   // initialise motor
   motor.init();
   // align encoder and start FOC
-  // motor.initFOC();
+  motor.initFOC();
 
   // set the inital target value
   // motor.target = 2;
@@ -100,7 +102,6 @@ void setup()
   Serial.println(F("Initial motion control loop is voltage loop."));
   Serial.println(F("Initial target voltage 2V."));
 
-  _delay(1000);
 }
 int throttle_value = 0;
 void loop()
