@@ -46,13 +46,13 @@ void taskBlink(void *parameter)
     {
       Serial.println(counter++);
       motor.target = counter;
-      vTaskDelay(300 / portTICK_PERIOD_MS);
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     for (int i = 10; i > 0; i--)
     {
       Serial.println(counter--);
       motor.target = counter;
-      vTaskDelay(300 / portTICK_PERIOD_MS);
+      vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
   }
 }
@@ -84,11 +84,11 @@ void setup()
 
   // driver config
   // power supply voltage [V]
-  driver.voltage_power_supply = 35;
+  driver.voltage_power_supply = 32;
   driver.init();
   // link the motor and the driver
   motor.linkDriver(&driver);
-  motor.voltage_sensor_align = 15;
+  motor.voltage_sensor_align = 20;
   motor.velocity_index_search = 10;
   // motor.phase_resistance = 0.0;
 
@@ -106,7 +106,7 @@ void setup()
   motor.PID_velocity.I = 10;
   // default voltage_power_supply
 
-  motor.voltage_limit = 35;
+  motor.voltage_limit = 5;
 
   // velocity low pass filtering time constant
   motor.LPF_velocity.Tf = 0.01f;
@@ -125,8 +125,8 @@ void setup()
   // initialise motor
   motor.init();
   // align encoder and start FOC
-  // motor.initFOC();
-  motor.initFOC(5.24, Direction::CW);
+  motor.initFOC();
+  // motor.initFOC(5.24, Direction::CW);
 
 
   // set the inital target value
