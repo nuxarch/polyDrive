@@ -9,7 +9,7 @@
 #define OC_ADJ 21
 BLDCMotor motor = BLDCMotor(13);
 BLDCDriver3PWM driver = BLDCDriver3PWM(INH_A, INH_B, INH_C, EN_GATE);
-HallSensor sensor = HallSensor(32, 35, 34, 13);
+HallSensor sensor = HallSensor(35, 33, 32, 23);
 void doA() { sensor.handleA(); }
 void doB() { sensor.handleB(); }
 void doC() { sensor.handleC(); }
@@ -17,7 +17,7 @@ Commander command = Commander(Serial);
 void onMotor(char *cmd) { command.motor(&motor, cmd); }
 void setup() {
   Serial.begin(115200);
-  sensor.pullup = Pullup::USE_INTERN;
+  sensor.pullup = Pullup::USE_EXTERN;
   sensor.init();
   sensor.enableInterrupts(doA, doB, doC);
   Serial.println("Sensor ready");
@@ -29,4 +29,5 @@ void loop() {
   Serial.print(sensor.getAngle());
   Serial.print("\t");
   Serial.println(sensor.getVelocity());
+  
 }
